@@ -1,6 +1,58 @@
+# ══════════════════════════════════════════════════════════════════
+# SOURCES
+# ══════════════════════════════════════════════════════════════════
+
 sources:
   - name: fedex
     schema: main
+    description: "Raw e-commerce sales data loaded from Fashionable Sale Report CSV via pipeline.py"
+
+    freshness:
+      warn_after: { count: 7, period: day }
+      error_after: { count: 30, period: day }
+    loaded_at_field: Date
 
     tables:
       - name: sale_report
+        description: "Raw order-level sales transactions from the Fashionable marketplace"
+        columns:
+          - name: "Order ID"
+            description: "Unique order identifier from the source system"
+            tests:
+              - not_null
+            quote: true
+
+          - name: Date
+            description: "Order placement date in MM-DD-YY format"
+            tests:
+              - not_null
+
+          - name: Status
+            description: "Raw order status from the source system"
+
+              
+          - name: Amount
+            description: "Unit price of the product at time of order"
+
+
+          - name: Qty
+            description: "Number of units ordered"
+
+          - name: SKU
+            description: "Stock Keeping Unit identifier"
+            tests:
+              - not_null
+
+          - name: currency
+            description: "Transaction currency — expected to be INR for all records"
+            tests:
+              - accepted_values:
+                  values: ["INR"]
+                  quote: true
+
+          - name: '"ship-country"'
+            tests:
+              - accepted_values:
+                  values: ["IN"]
+                  quote: true
+                  where: '"ship-country" IS NOT NULL'

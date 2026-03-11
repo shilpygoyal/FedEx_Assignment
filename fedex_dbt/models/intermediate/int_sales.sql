@@ -4,6 +4,64 @@
     )
 }}
 
+/*
+Model: int_sales
+
+Description:
+  Central intermediate model that applies all business logic, data cleaning,
+  and standardisation to the raw sales data. This is the single source of
+  truth for cleaned sales records — all downstream dimension and fact models
+  reference this model exclusively.
+
+  Transformations applied in this model (in CTE order):
+    1. columns_standardized — type casting, string lowercasing, state cleaning
+    2. clean_values         — NULL handling, negative value correction
+    3. derived_columns      — state name resolution, status normalisation,
+                              flag and measure derivation
+
+Materialization:
+  View — recomputed on each downstream reference. All five dimension tables
+  and fact_sales build from this model.
+  
+Source:
+  stg_sales — column-renamed view over the raw sale_report table.
+  india_state_mapping — seed table mapping state abbreviations to full names.
+
+Columns:
+  row_id              Stable row identifier from the source CSV index column.
+  order_id            Order identifier from the source system.
+  order_date          Order placement date. Cast from raw string to DATE.
+  order_status        Cleaned, standardised order status. Applied via the
+                      clean_order_status() macro. Possible values: pending,
+                      shipped, delivered, returned, exception, cancelled, unknown.
+  fulfilment          Fulfilment party, lowercased (e.g. 'merchant').
+  sales_channel       Sales platform, lowercased (e.g. 'fashionable.in').
+  ship_service_level  Shipping tier, lowercased (e.g. 'standard').
+  style               Product style code (unchanged from source).
+  sku                 Stock Keeping Unit (unchanged from source).
+  category            Product category, lowercased.
+  size                Product size variant (unchanged from source).
+  asin                Amazon Standard Identification Number (unchanged).
+  courier_status      Courier tracking status, lowercased. NULL values for
+                      cancelled orders are imputed as 'cancelled'.
+  quantity            Units ordered. Negative values clamped to 0.
+  currency            Transaction currency. Defaults to 'INR' where NULL.
+  amount              Unit price. NULL values defaulted to 0; negatives
+                      converted to ABS(amount).
+  ship_city           Destination city, lowercased. Defaults to 'unknown'.
+  ship_state          Full state name resolved from abbreviation via
+                      india_state_mapping seed. Defaults to 'unknown' if
+                      unmapped or NULL. Cleaned of '/' separator variants.
+  ship_postal_code    Indian PIN code (unchanged from source).
+  ship_country        Destination country code, lowercased. Defaults to 'unknown'.
+  promotion_id        Promotion code applied to the order. Defaults to 'unknown'.
+  b2b                 Boolean. TRUE for business-to-business orders.
+  fulfilled_by        Operational fulfilment method. Defaults to 'unknown'.
+  order_value         Derived measure: quantity * amount. Total line value.
+  is_cancelled        Boolean flag. TRUE where order_status = 'cancelled'.
+
+*/
+
 WITH source as (
     SELECT 
         *
@@ -16,6 +74,7 @@ state_map as (
     FROM 
         {{ ref('india_state_mapping') }}
 ),
+/* Step 1: Type casting and string standardisation */
 columns_standardized as (
     SELECT
         index as row_id,
@@ -44,6 +103,7 @@ columns_standardized as (
     FROM
         source
 ),
+/* Step 2: NULL handling and value correction */
 clean_values as (
     SELECT
         row_id,
@@ -72,12 +132,13 @@ clean_values as (
     FROM
         columns_standardized
 ),
+/* Step 3: Business logic — status normalisation, state resolution, derived columns */
 derived_columns as (
-
     SELECT 
         c.row_id,
         c.order_id,
         c.order_date,
+        -- Normalise raw status values into standard analytics categories
        {{ clean_order_status('c.order_status') }} as order_status,
         c.fulfilment,
         c.sales_channel,
@@ -98,7 +159,9 @@ derived_columns as (
         c.promotion_id,
         c.b2b,
         c.fulfilled_by,
+        -- Derived measure: total line value
         c.quantity * c.amount as order_value,
+        -- Derived flag: marks cancelled orders for easy filtering
         CASE 
             WHEN c.order_status = 'cancelled' 
             THEN TRUE 
