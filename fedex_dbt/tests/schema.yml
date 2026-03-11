@@ -1,0 +1,113 @@
+version : 2
+
+models:
+    - name: dim_product
+      description: "Product dimension containing product categories like style,categories"
+      columns:
+        - name: product_sk
+          description: "Surrogate key for product"
+          tests:
+            - unique
+            - not_null
+        - name: category
+          description: "Product category"
+
+    - name: dim_location
+      description: "Location dimension containing state,country,country and postal code"
+      columns:
+        - name: location_sk
+          description: "Surrogate key for location"
+          tests:
+            - unique
+            - not_null
+
+    - name: dim_date
+      description: "Date dimension containing order date,year,month and day"
+      columns:
+        - name: date_sk
+          description: "Surrogate key for date"
+          tests:
+            - unique
+            - not_null
+
+    - name: dim_channel
+      description: "CHannel dimension containing sales channel,fulfilment,fulfilled by and ship service level"
+      columns:
+        - name: channel_sk
+          description: "Surrogate key for channel"
+          tests:
+            - unique
+            - not_null
+
+    - name: dim_order_status
+      description: "Order status dimension containing order status,courier status and a flag value of is_cancelled"
+      columns:
+        - name: order_status_sk
+          description: "Surrogate key for order status"
+          tests:
+            - unique
+            - not_null
+
+    - name: fact_sales
+      description: "Sales fact containing order level sales transactions"
+      columns:
+        - name: order_id
+          description: "Unique identifier for order"
+          tests:
+            - not_null
+
+        - name: product_sk
+          description: "Foreign key linking to product dimension"
+          tests:
+            - relationships: 
+                to: ref('dim_product')
+                field: product_sk
+
+        - name: location_sk
+          description: "Foreign key linking to location dimension"
+          tests:
+            - relationships: 
+                to: ref('dim_location')
+                field: location_sk
+
+        - name: date_sk
+          description: "Foreign key linking to date dimension"
+          tests:
+            - relationships: 
+                to: ref('dim_date')
+                field: date_sk
+
+        - name: channel_sk
+          description: "Foreign key linking to channel dimension"
+          tests:
+            - relationships: 
+                to: ref('dim_channel')
+                field: channel_sk
+
+        - name: order_status_sk
+          description: "Foreign key linking to order status dimension"
+          tests:
+            - relationships: 
+                to: ref('dim_order_status')
+                field: order_status_sk
+
+        - name: order_value
+          description: "Total monetary value of the order line calculated as quantity multiplied by item price."
+          tests:
+            - not_null
+            - dbt_utils.expression_is_true:
+                expression: ">=0"
+
+        - name: quantity
+          description: "Number of items ordered."
+          tests:
+            - not_null
+            - dbt_utils.expression_is_true:
+                expression: ">=0"
+                
+        - name: amount
+          description: "Total sales ammount for the order line."
+          tests:
+            - not_null
+            - dbt_utils.expression_is_true:
+                expression: ">=0"

@@ -1,0 +1,13 @@
+fedex_dbt:
+  outputs:
+    dev:
+      type: duckdb
+      path: C:\Users\shilp\Desktop\FedEx_Assignment\fedex.duckdb
+      threads: 1
+
+    prod:
+      type: duckdb
+      path: C:\Users\shilp\Desktop\FedEx_Assignment\fedex.duckdb
+      threads: 4
+
+  target: dev

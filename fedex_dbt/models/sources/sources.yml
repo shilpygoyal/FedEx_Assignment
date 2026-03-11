@@ -1,0 +1,6 @@
+sources:
+  - name: fedex
+    schema: main
+
+    tables:
+      - name: sale_report
