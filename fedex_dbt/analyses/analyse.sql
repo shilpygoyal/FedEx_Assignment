@@ -1,1 +1,0 @@
-SELECT * from {{ ref('fact_sales') }}

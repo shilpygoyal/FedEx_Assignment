@@ -173,6 +173,14 @@ derived_columns as (
         state_map m
     ON 
         UPPER(c.ship_state) = m.state_code
+),
+deduped as (
+    SELECT *,
+        ROW_NUMBER() OVER (
+            PARTITION BY order_id, sku
+            ORDER BY row_id
+        ) as rn
+    FROM derived_columns
 )
 
-SELECT * FROM derived_columns
+SELECT * EXCLUDE (rn) FROM deduped WHERE rn = 1
