@@ -1,0 +1,1 @@
+SELECT DISTINCT * from {{ ref('dim_location') }} where ship_state LIKE 'Raj%'
